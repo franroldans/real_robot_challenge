@@ -118,12 +118,12 @@ class sac_agent_rrc:
                 with torch.no_grad():
                     print(type(obs))
                     print(obs)
-                    obs_tensor = self._get_tensor_inputs(obs)
-                    obs = obs_tensor['observation']
+                    obs_tensor = self._get_tensor_inputs(obs["observation"])
+                    """obs = obs_tensor['observation']
                     ag = obs_tensor['achieved_goal']
-                    g = obs_tensor['desired_goal']
+                    g = obs_tensor['desired_goal']"""
                     # generate the policy
-                    pi = self.actor_net(obs)
+                    pi = self.actor_net(obs_tensor)
                     action = get_action_info(pi).select_actions(reparameterize=False)
                     action = action.cpu().numpy()[0]
                 # input the action input the environment
