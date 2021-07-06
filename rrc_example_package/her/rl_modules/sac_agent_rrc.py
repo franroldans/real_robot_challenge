@@ -68,7 +68,7 @@ class sac_agent_rrc:
     def learn(self):
         global_timesteps = 0
         # before the official training, do the initial exploration to add episodes into the replay buffer
-        self._initial_exploration(exploration_policy=self.args.init_exploration_policy) 
+        self._collect_exp()
         # reset the environment
         obs = self.env.reset(difficulty=self.sample_difficulty())
         for epoch in range(self.args.n_epochs):
@@ -109,34 +109,106 @@ class sac_agent_rrc:
                             epoch, self.args.n_epochs, (epoch + 1) * self.args.epoch_length, mean_rewards, qf1_loss, qf2_loss, actor_loss, alpha, alpha_loss))
                 # save models
                 torch.save(self.actor_net.state_dict(), self.model_path + '/model.pt')
+                
+    # pre_process the inputs
+    def _preproc_inputs(self, obs, g):
+        obs_norm = self.o_norm.normalize(obs)
+        g_norm = self.g_norm.normalize(g)
+        # concatenate the stuffs
+        inputs = np.concatenate([obs_norm, g_norm])
+        inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
+        if self.args.cuda:
+            inputs = inputs.cuda()
+        return inputs
     
+    # this function will choose action for the agent and do the exploration
+    def _select_actions(self, pi):
+        action = pi.cpu().numpy().squeeze()
+        # add the gaussian
+        action += self.args.noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
+        action = np.clip(action, -self.env_params['action_max'], self.env_params['action_max'])
+        # random actions...
+        random_actions = np.random.uniform(low=-self.env_params['action_max'], high=self.env_params['action_max'], \
+                                            size=self.env_params['action'])
+        # choose if use the random actions
+        action += np.random.binomial(1, self.args.random_eps, 1)[0] * (random_actions - action)
+        return action
+
+    # update the normalizer
+    def _update_normalizer(self, episode_batch):
+        mb_obs, mb_ag, mb_g, mb_actions = episode_batch
+        mb_obs_next = mb_obs[:, 1:, :]
+        mb_ag_next = mb_ag[:, 1:, :]
+        # get the number of normalization transitions
+        num_transitions = mb_actions.shape[1]
+        # create the new buffer to store them
+        buffer_temp = {'obs': mb_obs, 
+                       'ag': mb_ag,
+                       'g': mb_g, 
+                       'actions': mb_actions, 
+                       'obs_next': mb_obs_next,
+                       'ag_next': mb_ag_next,
+                       }
+        transitions = self.her_module.sample_her_transitions(buffer_temp, num_transitions)
+        obs, g = transitions['obs'], transitions['g']
+        # pre process the obs and g
+        transitions['obs'], transitions['g'] = self._preproc_og(obs, g)
+        # delta calculation
+        mb_obs = np.clip(mb_obs, -self.args.clip_obs, self.args.clip_obs)
+        mb_delta = mb_obs[:,1:,:] - mb_obs[:,:-1,:]
+        # update
+        self.o_norm.update(transitions['obs'])
+        self.g_norm.update(transitions['g'])
+        self.delta_norm.update(mb_delta)
+        # recompute the stats
+        self.o_norm.recompute_stats()
+        self.g_norm.recompute_stats()
+        self.delta_norm.recompute_stats()
+
     # do the initial exploration by using the uniform policy
-    def _initial_exploration(self, exploration_policy='gaussian'):
-        # get the action information of the environment
-        obs = self.env.reset(difficulty=self.sample_difficulty())
-        for _ in range(self.args.init_exploration_steps):
-            if exploration_policy == 'uniform':
-                raise NotImplementedError
-            elif exploration_policy == 'gaussian':
-                # the sac does not need normalize?
+    def _collect_exp(self, rollouts=100, difficulty=1):
+        mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
+        for _ in range(rollouts):
+            # reset the rollouts
+            ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+            # reset the environment
+            observation = self.env.reset(difficulty=difficulty)
+            obs = observation['observation']
+            ag = observation['achieved_goal']
+            g = observation['desired_goal']
+            # start to collect samples
+            for t in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
-                    obs_tensor = self._get_tensor_inputs(obs["observation"])
-                    """obs = obs_tensor['observation']
-                    ag = obs_tensor['achieved_goal']
-                    g = obs_tensor['desired_goal']"""
-                    # generate the policy
-                    pi = self.actor_net(obs_tensor)
-                    action = get_action_info(pi).select_actions(reparameterize=False)
-                    action = action.cpu().numpy()[0]
-                # input the action input the environment
-                obs_, reward, done, _ = self.env.step(self.action_max * action)
-                # store the episodes
-                self.buffer.add(obs, action, reward, obs_, float(done))
-                obs = obs_
-                if done:
-                    # if done, reset the environment
-                    obs = self.env.reset(difficulty=self.sample_difficulty())
-        print("Initial exploration has been finished!")
+                    input_tensor = self._preproc_inputs(obs, g)
+                    pi = self.actor_network(input_tensor)
+                    action = self._select_actions(pi)
+                # feed the actions into the environment
+                observation_new, _, _, info = self.env.step(action)
+                obs_new = observation_new['observation']
+                ag_new = observation_new['achieved_goal']
+                # append rollouts
+                ep_obs.append(obs.copy())
+                ep_ag.append(ag.copy())
+                ep_g.append(g.copy())
+                ep_actions.append(action.copy())
+                # re-assign the observation
+                obs = obs_new
+                ag = ag_new
+            ep_obs.append(obs.copy())
+            ep_ag.append(ag.copy())
+            mb_obs.append(ep_obs)
+            mb_ag.append(ep_ag)
+            mb_g.append(ep_g)
+            mb_actions.append(ep_actions)
+        # convert them into arrays
+        mb_obs = np.array(mb_obs)
+        mb_ag = np.array(mb_ag)
+        mb_g = np.array(mb_g)
+        mb_actions = np.array(mb_actions)
+        # store the episodes
+        self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
+        self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
+        
     # get tensors
     def _get_tensor_inputs(self, obs):
         obs_tensor = torch.tensor(obs, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(0)
