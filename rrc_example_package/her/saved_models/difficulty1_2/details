@@ -1,0 +1,10 @@
+Trained with normal HER
+
+2 processes: mpirun --np 2
+
+args.n_epochs = 300
+args.num_rollouts_per_mpi = 4
+args.batch_size = 512
+
+CustomCubeEnv:
+def __init__(self, difficulty=1, sparse_rewards=True, step_size=40, distance_threshold=0.025, max_steps=50, visualisation=False):

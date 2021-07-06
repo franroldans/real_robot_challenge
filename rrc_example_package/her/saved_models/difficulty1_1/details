@@ -1,0 +1,9 @@
+Normal HER
+
+1 rollout per MPI as each episode has 100 steps (rather than 50)
+
+Feeding controller last object obs also to infer velocities
+
+epoch 38 working somewhat
+
+Alsways stops moving after 20 timesteps?? (due to penalty for movement?)
