@@ -392,7 +392,7 @@ class SimCubeTrajectoryEnv(BaseCubeTrajectoryEnv):
         initial_robot_position = trifingerpro_limits.robot_position.default
         # initialize cube at the centre
         initial_object_pose = task.move_cube.Pose(
-            position=task.RANDOM_CUBE_POSITION
+            position=task.sample_goal()
         )
 
         self.platform = trifinger_simulation.TriFingerPlatform(
