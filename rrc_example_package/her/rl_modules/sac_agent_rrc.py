@@ -150,6 +150,7 @@ class sac_agent_rrc:
         rewards = torch.tensor(rewards, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
         obses_ = torch.tensor(obses_, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
         inverse_dones = torch.tensor(1 - dones, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
+        print(obses)
         # start to update the actor network
         pis = self.actor_net(obses)
         actions_info = get_action_info(pis, cuda=self.args.cuda)
