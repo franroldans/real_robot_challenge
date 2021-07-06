@@ -46,7 +46,7 @@ def main():
     # get the environment parameters
     env_params = get_env_params(env)
     # create the ddpg agent to interact with the environment 
-    ddpg_trainer = sac_agent_rrc(args, env, env_params)
+    ddpg_trainer = sac_agent_rrc(args, env)
     ddpg_trainer.learn()
 
 if __name__ == '__main__':
