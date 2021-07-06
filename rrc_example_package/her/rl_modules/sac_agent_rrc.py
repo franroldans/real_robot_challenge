@@ -145,10 +145,10 @@ class sac_agent_rrc:
 
         
         # preprocessing the data into the tensors, will support GPU later
-        obses = torch.tensor(obses, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        actions = torch.tensor(actions, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        rewards = torch.tensor(rewards, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
-        obses_ = torch.tensor(obses_, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
+        obses = torch.tensor(torch.from_numpy(obses), dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
+        actions = torch.tensor(torch.from_numpy(actions), dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
+        rewards = torch.tensor(torch.from_numpy(rewards), dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
+        obses_ = torch.tensor(torch.from_numpy(obses_), dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
         inverse_dones = torch.tensor(1 - dones, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
         # start to update the actor network
         pis = self.actor_net(obses)
