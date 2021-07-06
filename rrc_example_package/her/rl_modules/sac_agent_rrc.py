@@ -116,6 +116,8 @@ class sac_agent_rrc:
             elif exploration_policy == 'gaussian':
                 # the sac does not need normalize?
                 with torch.no_grad():
+                    print(type(obs))
+                    print(obs)
                     obs_tensor = self._get_tensor_inputs(obs)
                     obs = obs_tensor['observation']
                     ag = obs_tensor['achieved_goal']
