@@ -21,6 +21,7 @@ class sac_agent_rrc:
     def __init__(self, env, args, env_params):
         self.args = args
         self.env = env
+        self.env_params = env_params
         # create eval environment
         #self.eval_env = gym.make(self.args.env_name)
         #self.eval_env.seed(args.seed * 2)
