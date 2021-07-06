@@ -142,6 +142,8 @@ class sac_agent_rrc:
     def _update_newtork(self):
         # smaple batch of samples from the replay buffer
         obses, actions, rewards, obses_, dones = self.buffer.sample(self.args.batch_size)
+        print(type(obses))
+        print(obses)
 
         
         # preprocessing the data into the tensors, will support GPU later
