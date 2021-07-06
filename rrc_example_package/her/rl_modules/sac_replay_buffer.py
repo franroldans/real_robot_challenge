@@ -27,10 +27,10 @@ class replay_buffer:
         for i in idx:
             data = self.storge[i]
             obs, action, reward, obs_, done = data
-            obses.append(np.array(obs, copy=False))
+            obses.append(np.array(obs["observation"], copy=False))
             actions.append(np.array(action, copy=False))
             rewards.append(reward)
-            obses_.append(np.array(obs_, copy=False))
+            obses_.append(np.array(obs_["observation"], copy=False))
             dones.append(done)
         return np.array(obses), np.array(actions), np.array(rewards), np.array(obses_), np.array(dones)
     
