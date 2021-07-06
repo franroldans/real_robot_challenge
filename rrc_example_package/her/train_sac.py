@@ -28,6 +28,7 @@ def get_env_params(env):
 def main():
     # get the params
     args = get_sac_args()
+    print(args.hidden_size)
     # args.n_cycles = 1
     # args.n_batches = 1
     args.n_epochs = 300
