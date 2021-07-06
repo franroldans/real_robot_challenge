@@ -17,20 +17,20 @@ author: Tianhong Dai
 
 # the soft-actor-critic agent
 class sac_agent_rrc:
-    def __init__(self, env, args):
+    def __init__(self, env, args, env_params):
         self.args = args
         self.env = env
         # create eval environment
         #self.eval_env = gym.make(self.args.env_name)
         #self.eval_env.seed(args.seed * 2)
         # build up the network that will be used.
-        self.qf1 = flatten_mlp(self.env.observation_space.shape[0], self.args.hidden_size, self.env.action_space.shape[0])
-        self.qf2 = flatten_mlp(self.env.observation_space.shape[0], self.args.hidden_size, self.env.action_space.shape[0])
+        self.qf1 = flatten_mlp(env_params['obs'], self.args.hidden_size, env_params['action'])
+        self.qf2 = flatten_mlp(env_params['obs'], self.args.hidden_size, env_params['action'])
         # set the target q functions
         self.target_qf1 = copy.deepcopy(self.qf1)
         self.target_qf2 = copy.deepcopy(self.qf2)
         # build up the policy network
-        self.actor_net = tanh_gaussian_actor(self.env.observation_space.shape[0], self.env.action_space.shape[0], self.args.hidden_size, \
+        self.actor_net = tanh_gaussian_actor(env_params['obs'], env_params['action'], self.args.hidden_size, \
                                             self.args.log_std_min, self.args.log_std_max)
         # define the optimizer for them
         self.qf1_optim = torch.optim.Adam(self.qf1.parameters(), lr=self.args.q_lr)
