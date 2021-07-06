@@ -143,10 +143,7 @@ class sac_agent_rrc:
         # smaple batch of samples from the replay buffer
         obses, actions, rewards, obses_, dones = self.buffer.sample(self.args.batch_size)
 
-        # Add intrinsic reward
-        r_intrinsic = self.get_intrinsic_reward(obses, actions, obses_)
-        transitions['r'] += r_intrinsic
-        ri = np.mean(r_intrinsic)
+        
         # preprocessing the data into the tensors, will support GPU later
         obses = torch.tensor(obses, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
         actions = torch.tensor(actions, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
@@ -192,7 +189,7 @@ class sac_agent_rrc:
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
-        return qf1_loss.item(), qf2_loss.item(), actor_loss.item(), alpha.item(), alpha_loss.item(), ri
+        return qf1_loss.item(), qf2_loss.item(), actor_loss.item(), alpha.item(), alpha_loss.item()
     
     # update the target network
     def _update_target_network(self, target, source):
@@ -226,14 +223,3 @@ class sac_agent_rrc:
                 obs = obs_
             total_reward += episode_reward
         return total_reward / self.args.eval_episodes
-
-    def get_intrinsic_reward(self, obs, a, obs_next, clip_max=0.8, scale=1):
-        delta = obs_next - obs
-        obs, delta = self._preproc_og(obs, delta)
-        obs_norm = torch.tensor(self.o_norm.normalize(obs))
-        delta_norm = self.delta_norm.normalize(delta)
-        
-        delta_pred = self.dynamics_model(obs_norm, torch.tensor(a, dtype=torch.float32))
-        error = scale * np.mean(np.square(delta_pred.detach().numpy() - delta_norm), axis=-1)
-        ri = np.expand_dims(np.clip(error, 0, clip_max), axis=-1)
-        return r
