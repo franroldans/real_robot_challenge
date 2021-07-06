@@ -121,7 +121,7 @@ class sac_agent_rrc:
                     ag = obs_tensor['achieved_goal']
                     g = obs_tensor['desired_goal']
                     # generate the policy
-                    pi = self.actor_net(obs_tensor)
+                    pi = self.actor_net(obs)
                     action = get_action_info(pi).select_actions(reparameterize=False)
                     action = action.cpu().numpy()[0]
                 # input the action input the environment
