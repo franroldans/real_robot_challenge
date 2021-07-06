@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 import os, sys
-from rrc_example_package.her.arguments import get_args
+from rrc_example_package.her.arguments import get_sac_args
 from mpi4py import MPI
 # from rrc_example_package.her.rl_modules.ddpg_agent import ddpg_agent
 from rrc_example_package.her.rl_modules.sac_agent_rrc import sac_agent_rrc
