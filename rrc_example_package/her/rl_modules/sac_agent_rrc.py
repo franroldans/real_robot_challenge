@@ -144,6 +144,14 @@ class sac_agent_rrc:
         obses, actions, rewards, obses_, dones = self.buffer.sample(self.args.batch_size)
         print(type(obses))
         print(obses)
+        print(type(actions))
+        print(actions)
+        print(type(rewards))
+        print(rewards)
+        print(type(obses_))
+        print(obses_)
+        print(type(dones))
+        print(dones)
 
         
         # preprocessing the data into the tensors, will support GPU later
