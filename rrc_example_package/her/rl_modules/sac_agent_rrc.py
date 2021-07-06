@@ -56,7 +56,7 @@ class sac_agent_rrc:
         # automatically create the folders to save models
         if not os.path.exists(self.args.save_dir):
             os.mkdir(self.args.save_dir)
-        self.model_path = os.path.join(self.args.save_dir, self.args.env_name)
+        self.model_path = os.path.join(self.args.save_dir, 'mymodels')
         if not os.path.exists(self.model_path):
             os.mkdir(self.model_path)
 
