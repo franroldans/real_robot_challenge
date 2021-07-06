@@ -4,6 +4,7 @@ from rrc_example_package.her.rl_modules.models import flatten_mlp, tanh_gaussian
 from rrc_example_package.her.rl_modules.replay_buffer import replay_buffer
 from rrc_example_package.her.utils import get_action_info
 from rrc_example_package.her.her_modules.her import her_sampler
+from rrc_example_package.her.mpi_utils.normalizer import normalizer
 from datetime import datetime
 import copy
 import os
@@ -31,6 +32,10 @@ class sac_agent_rrc:
         # set the target q functions
         self.target_qf1 = copy.deepcopy(self.qf1)
         self.target_qf2 = copy.deepcopy(self.qf2)
+        # create the normalizer
+        self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
+        self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
+        self.delta_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
         # build up the policy network
         self.actor_net = tanh_gaussian_actor(env_params['obs'], env_params['action'], self.args.hidden_size, \
                                             self.args.log_std_min, self.args.log_std_max)
