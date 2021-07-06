@@ -73,6 +73,6 @@ def get_sac_args():
     parse.add_argument('--log-dir', type=str, default='logs', help='dir to save log information')
     parse.add_argument('--env-type', type=str, default=None, help='environment type')
 
-    args = parser.parse_args()
+    args = parse.parse_args()
     print('HER args:\n{}'.format(args))
     return args
