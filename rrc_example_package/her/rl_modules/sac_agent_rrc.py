@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-from models import flatten_mlp, tanh_gaussian_actor
-from rl_utils.experience_replay.experience_replay import replay_buffer
-from utils import get_action_info
+from rrc_example_package.her.rl_modules.models import flatten_mlp, tanh_gaussian_actor
+from rrc_example_package.her.rl_modules.replay_buffer import replay_buffer
+from rrc_example_package.her.utils import get_action_info
 from datetime import datetime
 import copy
 import os
