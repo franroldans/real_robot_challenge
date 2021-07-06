@@ -21,8 +21,8 @@ class sac_agent_rrc:
         self.args = args
         self.env = env
         # create eval environment
-        self.eval_env = gym.make(self.args.env_name)
-        self.eval_env.seed(args.seed * 2)
+        #self.eval_env = gym.make(self.args.env_name)
+        #self.eval_env.seed(args.seed * 2)
         # build up the network that will be used.
         self.qf1 = flatten_mlp(self.env.observation_space.shape[0], self.args.hidden_size, self.env.action_space.shape[0])
         self.qf2 = flatten_mlp(self.env.observation_space.shape[0], self.args.hidden_size, self.env.action_space.shape[0])
@@ -213,7 +213,7 @@ class sac_agent_rrc:
                     action = get_action_info(pi, cuda=self.args.cuda).select_actions(exploration=False, reparameterize=False)
                     action = action.detach().cpu().numpy()[0]
                 # input the action into the environment
-                obs_, reward, done, _ = self.eval_env.step(self.action_max * action)
+                obs_, reward, done, _ = self.env.step(self.action_max * action)
                 episode_reward += reward
                 if done:
                     break
