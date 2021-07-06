@@ -74,7 +74,10 @@ class sac_agent_rrc:
                     # start to collect samples
                     with torch.no_grad():
                         obs_tensor = self._get_tensor_inputs(obs)
-                        pi = self.actor_net(obs_tensor)
+                        obs = obs_tensor['observation']
+                        ag = obs_tensor['achieved_goal']
+                        g = obs_tensor['desired_goal']
+                        pi = self.actor_net(obs)
                         action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
                         action = action.cpu().numpy()[0]
                     # input the actions into the environment
