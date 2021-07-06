@@ -74,6 +74,7 @@ def get_sac_args():
     parse.add_argument('--env-type', type=str, default=None, help='environment type')
     parse.add_argument('--replay-strategy', type=str, default='future', help='the HER strategy')
     parse.add_argument('--replay-k', type=int, default=4, help='ratio to be replace')
+    parse.add_argument('--clip-range', type=float, default=5, help='the clip range')
 
 
     args = parse.parse_args()
