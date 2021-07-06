@@ -1,8 +1,9 @@
 import numpy as np
 import torch
 from rrc_example_package.her.rl_modules.models import flatten_mlp, tanh_gaussian_actor
-from rrc_example_package.her.rl_modules.sac_replay_buffer import replay_buffer
+from rrc_example_package.her.rl_modules.replay_buffer import replay_buffer
 from rrc_example_package.her.utils import get_action_info
+from rrc_example_package.her.her_modules.her import her_sampler
 from datetime import datetime
 import copy
 import os
@@ -42,8 +43,10 @@ class sac_agent_rrc:
         self.log_alpha = torch.zeros(1, requires_grad=True, device='cuda' if self.args.cuda else 'cpu')
         # define the optimizer
         self.alpha_optim = torch.optim.Adam([self.log_alpha], lr=self.args.p_lr)
-        # define the replay buffer
-        self.buffer = replay_buffer(self.args.buffer_size)
+        # her sampler
+        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward)
+        # create the replay buffer
+        self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # get the action max
         self.action_max = self.env.action_space.high[0]
         # if use cuda, put tensor onto the gpu
@@ -138,21 +141,44 @@ class sac_agent_rrc:
         obs_tensor = torch.tensor(obs, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(0)
         return obs_tensor
     
+    def _preproc_og(self, o, g):
+        o = np.clip(o, -self.args.clip_obs, self.args.clip_obs)
+        g = np.clip(g, -self.args.clip_obs, self.args.clip_obs)
+        return o, g
+
+    # soft update
+    def _soft_update_target_network(self, target, source):
+        for target_param, param in zip(target.parameters(), source.parameters()):
+            target_param.data.copy_((1 - self.args.polyak) * param.data + self.args.polyak * target_param.data)
+    
     # update the network
     def _update_newtork(self):
-        # smaple batch of samples from the replay buffer
-        obses, actions, rewards, obses_, dones = self.buffer.sample(self.args.batch_size)
 
+        transitions = self.buffer.sample(self.args.batch_size)
         
-        # preprocessing the data into the tensors, will support GPU later
-        obses = torch.tensor(obses, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        actions = torch.tensor(actions, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        rewards = torch.tensor(rewards, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
-        obses_ = torch.tensor(obses_, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        inverse_dones = torch.tensor(1 - dones, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
-        print(obses)
+        # Add intrinsic reward
+        r_intrinsic = self.get_intrinsic_reward(transitions['obs'], transitions['actions'], transitions['obs_next'])
+        transitions['r'] += r_intrinsic
+        ri = np.mean(r_intrinsic)
+        # pre-process the observation and goal
+        o, o_next, g = transitions['obs'], transitions['obs_next'], transitions['g']
+        transitions['obs'], transitions['g'] = self._preproc_og(o, g)
+        transitions['obs_next'], transitions['g_next'] = self._preproc_og(o_next, g)
+         # start to do the update
+        obs_norm = self.o_norm.normalize(transitions['obs'])
+        g_norm = self.g_norm.normalize(transitions['g'])
+        inputs_norm = np.concatenate([obs_norm, g_norm], axis=1)
+        obs_next_norm = self.o_norm.normalize(transitions['obs_next'])
+        g_next_norm = self.g_norm.normalize(transitions['g_next'])
+        inputs_next_norm = np.concatenate([obs_next_norm, g_next_norm], axis=1)
+        # transfer them into the tensor
+        inputs_norm_tensor = torch.tensor(inputs_norm, dtype=torch.float32)
+        inputs_next_norm_tensor = torch.tensor(inputs_next_norm, dtype=torch.float32)
+        actions_tensor = torch.tensor(transitions['actions'], dtype=torch.float32)
+        r_tensor = torch.tensor(transitions['r'], dtype=torch.float32) 
+        
         # start to update the actor network
-        pis = self.actor_net(obses)
+        pis = self.actor_net(obs_norm)
         actions_info = get_action_info(pis, cuda=self.args.cuda)
         actions_, pre_tanh_value = actions_info.select_actions(reparameterize=True)
         log_prob = actions_info.get_log_prob(actions_, pre_tanh_value)
@@ -164,17 +190,17 @@ class sac_agent_rrc:
         # get the param
         alpha = self.log_alpha.exp()
         # get the q_value for new actions
-        q_actions_ = torch.min(self.qf1(obses, actions_), self.qf2(obses, actions_))
+        q_actions_ = torch.min(self.qf1(obs_norm, actions_), self.qf2(obs_norm, actions_))
         actor_loss = (alpha * log_prob - q_actions_).mean()
         # q value function loss
-        q1_value = self.qf1(obses, actions)
-        q2_value = self.qf2(obses, actions)
+        q1_value = self.qf1(obs_norm, actions)
+        q2_value = self.qf2(obs_norm, actions)
         with torch.no_grad():
             pis_next = self.actor_net(obses_)
             actions_info_next = get_action_info(pis_next, cuda=self.args.cuda)
             actions_next_, pre_tanh_value_next = actions_info_next.select_actions(reparameterize=True)
             log_prob_next = actions_info_next.get_log_prob(actions_next_, pre_tanh_value_next)
-            target_q_value_next = torch.min(self.target_qf1(obses_, actions_next_), self.target_qf2(obses_, actions_next_)) - alpha * log_prob_next
+            target_q_value_next = torch.min(self.target_qf1(obs_next_norm, actions_next_), self.target_qf2(obs_next_norm, actions_next_)) - alpha * log_prob_next
             target_q_value = self.args.reward_scale * rewards + inverse_dones * self.args.gamma * target_q_value_next 
         qf1_loss = (q1_value - target_q_value).pow(2).mean()
         qf2_loss = (q2_value - target_q_value).pow(2).mean()
@@ -191,6 +217,19 @@ class sac_agent_rrc:
         actor_loss.backward()
         self.actor_optim.step()
         return qf1_loss.item(), qf2_loss.item(), actor_loss.item(), alpha.item(), alpha_loss.item()
+    
+  
+
+    def get_intrinsic_reward(self, obs, a, obs_next, clip_max=0.8, scale=1):
+        delta = obs_next - obs
+        obs, delta = self._preproc_og(obs, delta)
+        obs_norm = torch.tensor(self.o_norm.normalize(obs))
+        delta_norm = self.delta_norm.normalize(delta)
+        
+        delta_pred = self.dynamics_model(obs_norm, torch.tensor(a, dtype=torch.float32))
+        error = scale * np.mean(np.square(delta_pred.detach().numpy() - delta_norm), axis=-1)
+        ri = np.expand_dims(np.clip(error, 0, clip_max), axis=-1)
+        return ri
     
     # update the target network
     def _update_target_network(self, target, source):
