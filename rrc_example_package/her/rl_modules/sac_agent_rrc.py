@@ -117,6 +117,9 @@ class sac_agent_rrc:
                 # the sac does not need normalize?
                 with torch.no_grad():
                     obs_tensor = self._get_tensor_inputs(obs)
+                    obs = obs_tensor['observation']
+                    ag = obs_tensor['achieved_goal']
+                    g = obs_tensor['desired_goal']
                     # generate the policy
                     pi = self.actor_net(obs_tensor)
                     action = get_action_info(pi).select_actions(reparameterize=False)
