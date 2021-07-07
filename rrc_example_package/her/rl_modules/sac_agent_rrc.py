@@ -209,6 +209,8 @@ class sac_agent_rrc:
         for _ in range(self.args.eval_episodes):
             observation = self.env.reset(difficulty=self.sample_difficulty())
             obs = observation['observation']
+            print(obs)
+            print(type(obs))
             g = observation['desired_goal']
             episode_reward = 0 
             while True:
