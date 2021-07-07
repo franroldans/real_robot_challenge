@@ -68,7 +68,7 @@ class flatten_mlp(nn.Module):
         super(flatten_mlp, self).__init__()
         self.fc1 = nn.Linear(input_dims, hidden_size) if action_dims is None else nn.Linear(input_dims + action_dims, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.q_value = nn.Linear(hidden_size, 1)
+        self.q_value = nn.Linear(hidden_size, action_dims)
 
     def forward(self, obs, action=None):
         inputs = torch.cat([obs, action], dim=1) if action is not None else obs
