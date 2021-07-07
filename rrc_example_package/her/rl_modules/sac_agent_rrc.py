@@ -224,7 +224,7 @@ class sac_agent_rrc:
                 episode_reward += reward
                 if done:
                     break
-                obs = obs_
+                obs = obs_["observation"]
             total_reward += episode_reward
         return total_reward / self.args.eval_episodes
 
