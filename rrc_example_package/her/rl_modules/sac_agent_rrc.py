@@ -63,6 +63,7 @@ class sac_agent_rrc:
 
     # train the agent
     def learn(self):
+        torch.autograd.set_detect_anomaly(True)
         global_timesteps = 0
         # before the official training, do the initial exploration to add episodes into the replay buffer
         self._initial_exploration(exploration_policy=self.args.init_exploration_policy) 
