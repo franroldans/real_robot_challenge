@@ -164,6 +164,12 @@ class sac_agent_rrc:
         # get the q_value for new actions
         q_actions_ = torch.min(self.qf1(obses, actions_), self.qf2(obses, actions_))
         actor_loss = (alpha * log_prob - q_actions_).mean()
+        
+        # policy loss
+        self.actor_optim.zero_grad()
+        actor_loss.backward()
+        self.actor_optim.step()
+        
         # q value function loss
         q1_value = self.qf1(obses, actions)
         q2_value = self.qf2(obses, actions)
@@ -184,10 +190,7 @@ class sac_agent_rrc:
         self.qf2_optim.zero_grad()
         qf2_loss.backward()
         self.qf2_optim.step()
-        # policy loss
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        self.actor_optim.step()
+       
         return qf1_loss.item(), qf2_loss.item(), actor_loss.item(), alpha.item(), alpha_loss.item()
     
     # update the target network
