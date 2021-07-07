@@ -75,7 +75,7 @@ class sac_agent_rrc:
                 for t in range(self.args.epoch_length):
                     # start to collect samples
                     with torch.no_grad():
-                        obs_tensor = self._get_tensor_inputs(obs)
+                        obs_tensor = self._get_tensor_inputs(obs["observation"])
                         pi = self.actor_net(obs_tensor)
                         action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
                         action = action.cpu().numpy()[0]
