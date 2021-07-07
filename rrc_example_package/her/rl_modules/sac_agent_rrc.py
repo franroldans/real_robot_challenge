@@ -222,7 +222,7 @@ class sac_agent_rrc:
             total_reward += episode_reward
         return total_reward / self.args.eval_episodes
 
-    def get_intrinsic_reward(self, obs, a, obs_next, clip_max=0.8, scale=1):
+    """def get_intrinsic_reward(self, obs, a, obs_next, clip_max=0.8, scale=1):
         delta = obs_next - obs
         obs, delta = self._preproc_og(obs, delta)
         obs_norm = torch.tensor(self.o_norm.normalize(obs))
@@ -231,4 +231,4 @@ class sac_agent_rrc:
         delta_pred = self.dynamics_model(obs_norm, torch.tensor(a, dtype=torch.float32))
         error = scale * np.mean(np.square(delta_pred.detach().numpy() - delta_norm), axis=-1)
         ri = np.expand_dims(np.clip(error, 0, clip_max), axis=-1)
-        return r
+        return r"""
