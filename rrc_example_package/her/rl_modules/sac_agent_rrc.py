@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from rrc_example_package.her.rl_modules.models import flatten_mlp, tanh_gaussian_actor
-from rrc_example_package.her.rl_modules.replay_buffer import replay_buffer
+from rrc_example_package.her.rl_modules.sac_replay_buffer import replay_buffer
 from rrc_example_package.her.utils import get_action_info
 from datetime import datetime
 import copy
@@ -24,13 +24,13 @@ class sac_agent_rrc:
         #self.eval_env = gym.make(self.args.env_name)
         #self.eval_env.seed(args.seed * 2)
         # build up the network that will be used.
-        self.qf1 = flatten_mlp(env_params['obs'], args.hidden_size, env_params['action'])
-        self.qf2 = flatten_mlp(env_params['obs'], args.hidden_size, env_params['action'])
+        self.qf1 = flatten_mlp(env_params['obs'], self.args.hidden_size, env_params['action'])
+        self.qf2 = flatten_mlp(env_params['obs'], self.args.hidden_size, env_params['action'])
         # set the target q functions
         self.target_qf1 = copy.deepcopy(self.qf1)
         self.target_qf2 = copy.deepcopy(self.qf2)
         # build up the policy network
-        self.actor_net = tanh_gaussian_actor(env_params['obs'], env_params['action'], args.hidden_size, \
+        self.actor_net = tanh_gaussian_actor(env_params['obs'], env_params['action'], self.args.hidden_size, \
                                             self.args.log_std_min, self.args.log_std_max)
         # define the optimizer for them
         self.qf1_optim = torch.optim.Adam(self.qf1.parameters(), lr=self.args.q_lr)
@@ -56,7 +56,7 @@ class sac_agent_rrc:
         # automatically create the folders to save models
         if not os.path.exists(self.args.save_dir):
             os.mkdir(self.args.save_dir)
-        self.model_path = os.path.join(self.args.save_dir, self.args.env_name)
+        self.model_path = os.path.join(self.args.save_dir, 'mymodels')
         if not os.path.exists(self.model_path):
             os.mkdir(self.model_path)
 
