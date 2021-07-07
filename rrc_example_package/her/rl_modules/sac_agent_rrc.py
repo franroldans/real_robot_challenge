@@ -75,7 +75,7 @@ class sac_agent_rrc:
                 for t in range(self.args.epoch_length):
                     # start to collect samples
                     with torch.no_grad():
-                        obs_tensor = self._get_tensor_inputs(obs["observation"])
+                        obs_tensor = self._get_tensor_inputs(obs)
                         pi = self.actor_net(obs_tensor)
                         action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
                         action = action.cpu().numpy()[0]
@@ -115,7 +115,7 @@ class sac_agent_rrc:
             elif exploration_policy == 'gaussian':
                 # the sac does not need normalize?
                 with torch.no_grad():
-                    obs_tensor = self._get_tensor_inputs(obs)
+                    obs_tensor = self._get_tensor_inputs(obs["observation"])
                     # generate the policy
                     pi = self.actor_net(obs_tensor)
                     action = get_action_info(pi).select_actions(reparameterize=False)
