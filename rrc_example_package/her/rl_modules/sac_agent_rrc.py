@@ -130,9 +130,7 @@ class sac_agent_rrc:
         print("Initial exploration has been finished!")
     # get tensors
     def _get_tensor_inputs(self, obs):
-        print(type(obs))
-        print(obs)
-        obs_tensor = torch.tensor(obs, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(0)
+        obs_tensor = torch.tensor(obs["observation"], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(0)
         return obs_tensor
     
     # update the network
