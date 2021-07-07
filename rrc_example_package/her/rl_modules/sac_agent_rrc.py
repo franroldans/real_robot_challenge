@@ -139,9 +139,9 @@ class sac_agent_rrc:
         obses, actions, rewards, obses_, dones = self.buffer.sample(self.args.batch_size)
 
         # Add intrinsic reward
-        r_intrinsic = self.get_intrinsic_reward(obses, actions, obses_)
+        """r_intrinsic = self.get_intrinsic_reward(obses, actions, obses_)
         transitions['r'] += r_intrinsic
-        ri = np.mean(r_intrinsic)
+        ri = np.mean(r_intrinsic)"""
         # preprocessing the data into the tensors, will support GPU later
         obses = torch.tensor(obses, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
         actions = torch.tensor(actions, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
@@ -187,7 +187,7 @@ class sac_agent_rrc:
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
-        return qf1_loss.item(), qf2_loss.item(), actor_loss.item(), alpha.item(), alpha_loss.item(), ri
+        return qf1_loss.item(), qf2_loss.item(), actor_loss.item(), alpha.item(), alpha_loss.item()
     
     # update the target network
     def _update_target_network(self, target, source):
