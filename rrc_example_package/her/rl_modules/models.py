@@ -73,9 +73,9 @@ class flatten_mlp(nn.Module):
     def forward(self, obs, action=None):
         inputs = torch.cat([obs, action], dim=1) if action is not None else obs
         x = F.relu(self.fc1(inputs))
-        print(x.numpy()[0])
+        print(x.detach().numpy()[0])
         x = F.relu(self.fc2(x))
-        print(x.numpy()[0])
+        print(x.detach().numpy()[0])
         output = self.q_value(x)
         return output
 
