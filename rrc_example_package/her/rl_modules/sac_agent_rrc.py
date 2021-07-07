@@ -75,7 +75,7 @@ class sac_agent_rrc:
                 for t in range(self.args.epoch_length):
                     # start to collect samples
                     with torch.no_grad():
-                        obs_tensor = self._get_tensor_inputs(obs)
+                        obs_tensor = self._get_tensor_inputs(obs["observation"])
                         pi = self.actor_net(obs_tensor)
                         action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
                         action = action.cpu().numpy()[0]
@@ -131,7 +131,7 @@ class sac_agent_rrc:
         print("Initial exploration has been finished!")
     # get tensors
     def _get_tensor_inputs(self, obs):
-        obs_tensor = torch.tensor(obs["observation"], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(0)
+        obs_tensor = torch.tensor(obs, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(0)
         return obs_tensor
     
     # update the network
