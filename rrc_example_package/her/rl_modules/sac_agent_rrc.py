@@ -245,9 +245,13 @@ class sac_agent_rrc:
             for t in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
                     input_tensor = self._get_tensor_inputs(obs)
+                    print(input tensor)
                     pi = self.actor_net(input_tensor)
+                    print(pi)
                     action = get_action_info(pi).select_actions(reparameterize=False)
+                    print(action)
                     action = action.cpu().numpy()[0]
+                    print(action)
                 # feed the actions into the environment
                 observation_new, _, _, info = self.env.step(action)
                 obs_new = observation_new['observation']
