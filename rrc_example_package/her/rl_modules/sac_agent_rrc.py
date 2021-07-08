@@ -71,8 +71,11 @@ class sac_agent_rrc:
         self._collect_exp() 
         # reset the environment
         obs = self.env.reset(difficulty=self.sample_difficulty())
+
         for epoch in range(self.args.n_epochs):
+            mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
             for _ in range(self.args.train_loop_per_epoch):
+                ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
                 # for each epoch, it will reset the environment
                 for t in range(self.args.epoch_length):
                     # start to collect samples
@@ -117,7 +120,8 @@ class sac_agent_rrc:
             # print the log information
             if epoch % self.args.display_interval == 0:
                 # start to do the evaluation
-                mean_rewards = self._evaluate_agent()
+                #mean_rewards = self._evaluate_agent()
+                mean_rewards = self._eval_agent()
                 print('[{}] Epoch: {} / {}, Frames: {}, Rewards: {:.3f}, QF1: {:.3f}, QF2: {:.3f}, AL: {:.3f}, Alpha: {:.5f}, AlphaL: {:.5f}'.format(datetime.now(), \
                             epoch, self.args.n_epochs, (epoch + 1) * self.args.epoch_length, mean_rewards, qf1_loss, qf2_loss, actor_loss, alpha, alpha_loss))
                 # save models
@@ -292,6 +296,32 @@ class sac_agent_rrc:
         self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
         #self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
         
+
+    # do the evaluation
+    def _eval_agent(self):
+        total_success_rate = []
+        for _ in range(self.args.n_test_rollouts):
+            per_success_rate = []
+            observation = self.env.reset(difficulty=self.sample_difficulty())
+            obs = observation['observation']
+            g = observation['desired_goal']
+            for _ in range(self.env_params['max_timesteps']):
+                with torch.no_grad():
+                    input_tensor = self._preproc_inputs(obs, g)
+                    pi = self.actor_network(input_tensor)
+                    # convert the actions
+                    action = get_action_info(pi).select_actions(reparameterize=False)
+                    action = action.cpu().numpy()[0]
+                observation_new, _, _, info = self.env.step(self.action_max *actions)
+                obs = observation_new['observation']
+                g = observation_new['desired_goal']
+                per_success_rate.append(info['is_success'])
+            total_success_rate.append(per_success_rate)
+        total_success_rate = np.array(total_success_rate)
+        local_success_rate = np.mean(total_success_rate[:, -1])
+        global_success_rate = MPI.COMM_WORLD.allreduce(local_success_rate, op=MPI.SUM)
+        return global_success_rate / MPI.COMM_WORLD.Get_size()
+
 
     """def get_intrinsic_reward(self, obs, a, obs_next, clip_max=0.8, scale=1):
         delta = obs_next - obs
