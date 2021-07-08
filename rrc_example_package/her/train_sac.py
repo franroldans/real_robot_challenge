@@ -16,6 +16,7 @@ train the agent, the MPI part code is copy from openai baselines(https://github.
 """
 def get_env_params(env):
     obs = env.reset()
+    print(env.action_space)
     # close the environment
     params = {'obs': obs['observation'].shape[0],
             'goal': obs['desired_goal'].shape[0],
