@@ -70,7 +70,7 @@ class sac_agent_rrc:
         # before the official training, do the initial exploration to add episodes into the replay buffer
         self._collect_exp() 
         # reset the environment
-        obs = self.env.reset(difficulty=self.sample_difficulty())
+        observation = self.env.reset(difficulty=self.sample_difficulty())
         obs = observation['observation']
         ag = observation['achieved_goal']
         g = observation['desired_goal']
