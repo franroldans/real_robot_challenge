@@ -81,7 +81,7 @@ class sac_agent_rrc:
                 for _ in range(self.args.train_loop_per_epoch):
                     ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
                     # for each epoch, it will reset the environment
-                    for t in range(self.args.epoch_length):
+                    for t in range(self.env_params['max_timesteps']):
                         # start to collect samples
                         with torch.no_grad():
                             obs_tensor = self._get_tensor_inputs(obs)
