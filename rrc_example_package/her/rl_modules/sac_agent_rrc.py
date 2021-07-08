@@ -267,7 +267,7 @@ class sac_agent_rrc:
             # start to collect samples
             for t in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
-                    input_tensor = self._preproc_inputs(obs, g)
+                    input_tensor = self._get_tensor_inputs(obs)
                     pi = self.actor_net(input_tensor)
                     action = self._select_actions(pi)
                 # feed the actions into the environment
