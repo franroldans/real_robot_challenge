@@ -230,29 +230,6 @@ class sac_agent_rrc:
             total_reward += episode_reward
         return total_reward / self.args.eval_episodes
 
-    # this function will choose action for the agent and do the exploration
-    def _select_actions(self, pi):
-        action = pi.cpu().numpy().squeeze()
-        # add the gaussian
-        action += self.args.noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
-        action = np.clip(action, -self.env_params['action_max'], self.env_params['action_max'])
-        # random actions...
-        random_actions = np.random.uniform(low=-self.env_params['action_max'], high=self.env_params['action_max'], \
-                                            size=self.env_params['action'])
-        # choose if use the random actions
-        action += np.random.binomial(1, self.args.random_eps, 1)[0] * (random_actions - action)
-        return action
-
-    # pre_process the inputs
-    def _preproc_inputs(self, obs, g):
-        #obs_norm = self.o_norm.normalize(obs)
-        #g_norm = self.g_norm.normalize(g)
-        # concatenate the stuffs
-        inputs = np.concatenate([obs, g])
-        inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
-        if self.args.cuda:
-            inputs = inputs.cuda()
-        return inputs
 
     def _collect_exp(self, rollouts=100, difficulty=1):
         mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
@@ -269,7 +246,8 @@ class sac_agent_rrc:
                 with torch.no_grad():
                     input_tensor = self._get_tensor_inputs(obs)
                     pi = self.actor_net(input_tensor)
-                    action = self._select_actions(pi)
+                    action = get_action_info(pi).select_actions(reparameterize=False)
+                    action = action.cpu().numpy()[0]
                 # feed the actions into the environment
                 observation_new, _, _, info = self.env.step(action)
                 obs_new = observation_new['observation']
