@@ -71,6 +71,9 @@ class sac_agent_rrc:
         self._collect_exp() 
         # reset the environment
         obs = self.env.reset(difficulty=self.sample_difficulty())
+        obs = observation['observation']
+        ag = observation['achieved_goal']
+        g = observation['desired_goal']
 
         for epoch in range(self.args.n_epochs):
             mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
@@ -273,6 +276,7 @@ class sac_agent_rrc:
                 observation_new, _, _, info = self.env.step(self.action_max * action)
                 obs_new = observation_new['observation']
                 ag_new = observation_new['achieved_goal']
+                
                 # append rollouts
                 ep_obs.append(obs.copy())
                 ep_ag.append(ag.copy())
@@ -307,8 +311,8 @@ class sac_agent_rrc:
             g = observation['desired_goal']
             for _ in range(self.env_params['max_timesteps']):
                 with torch.no_grad():
-                    input_tensor = self._preproc_inputs(obs, g)
-                    pi = self.actor_network(input_tensor)
+                    input_tensor = self._get_tensor_inputs(obs)
+                    pi = self.actor_net(input_tensor)
                     # convert the actions
                     action = get_action_info(pi).select_actions(reparameterize=False)
                     action = action.cpu().numpy()[0]
