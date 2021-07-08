@@ -100,8 +100,6 @@ class sac_agent_rrc:
                         # re-assign the observation
                         obs = obs_new
                         ag = ag_new
-                        ep_obs.append(obs.copy())
-                        ep_ag.append(ag.copy())
                         mb_obs.append(ep_obs)
                         mb_ag.append(ep_ag)
                         mb_g.append(ep_g)
