@@ -69,11 +69,6 @@ class sac_agent_rrc:
         global_timesteps = 0
         # before the official training, do the initial exploration to add episodes into the replay buffer
         self._collect_exp() 
-        # reset the environment
-        observation = self.env.reset(difficulty=self.sample_difficulty())
-        obs = observation['observation']
-        ag = observation['achieved_goal']
-        g = observation['desired_goal']
 
         for epoch in range(self.args.n_epochs):
             for _ in range(self.args.n_cycles):
@@ -81,6 +76,11 @@ class sac_agent_rrc:
                 for _ in range(self.args.train_loop_per_epoch):
                     ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
                     # for each epoch, it will reset the environment
+                    # reset the environment
+                    observation = self.env.reset(difficulty=self.sample_difficulty())
+                    obs = observation['observation']
+                    ag = observation['achieved_goal']
+                    g = observation['desired_goal']
                     for t in range(self.env_params['max_timesteps']):
                         # start to collect samples
                         with torch.no_grad():
