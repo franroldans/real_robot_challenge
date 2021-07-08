@@ -82,14 +82,30 @@ class sac_agent_rrc:
                         action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
                         action = action.cpu().numpy()[0]
                     # input the actions into the environment
-                    obs_, reward, done, _ = self.env.step(self.action_max * action)
-                    # store the samples
-                    self.buffer.store_episode(obs, action, reward, obs_, float(done))
-                    # reassign the observations
-                    obs = obs_
-                    if done:
-                        # reset the environment
-                        obs = self.env.reset(difficulty=self.sample_difficulty())
+                    observation_new, reward, done, _ = self.env.step(self.action_max * action)
+                    obs_new = observation_new['observation']
+                    ag_new = observation_new['achieved_goal']
+                    # append rollouts
+                    ep_obs.append(obs.copy())
+                    ep_ag.append(ag.copy())
+                    ep_g.append(g.copy())
+                    ep_actions.append(action.copy())
+                    # re-assign the observation
+                        obs = obs_new
+                        ag = ag_new
+                    ep_obs.append(obs.copy())
+                    ep_ag.append(ag.copy())
+                    mb_obs.append(ep_obs)
+                    mb_ag.append(ep_ag)
+                    mb_g.append(ep_g)
+                    mb_actions.append(ep_actions)
+                # convert them into arrays
+                mb_obs = np.array(mb_obs)
+                mb_ag = np.array(mb_ag)
+                mb_g = np.array(mb_g)
+                mb_actions = np.array(mb_actions)
+                # store the episodes
+                self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
                 # after collect the samples, start to update the network
                 for _ in range(self.args.update_cycles):
                     qf1_loss, qf2_loss, actor_loss, alpha, alpha_loss = self._update_newtork()
