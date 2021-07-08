@@ -76,51 +76,52 @@ class sac_agent_rrc:
         g = observation['desired_goal']
 
         for epoch in range(self.args.n_epochs):
-            mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
-            for _ in range(self.args.train_loop_per_epoch):
-                ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
-                # for each epoch, it will reset the environment
-                for t in range(self.args.epoch_length):
-                    # start to collect samples
-                    with torch.no_grad():
-                        obs_tensor = self._get_tensor_inputs(obs)
-                        pi = self.actor_net(obs_tensor)
-                        action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
-                        action = action.cpu().numpy()[0]
-                    # input the actions into the environment
-                    observation_new, reward, done, _ = self.env.step(self.action_max * action)
-                    obs_new = observation_new['observation']
-                    ag_new = observation_new['achieved_goal']
-                    # append rollouts
-                    ep_obs.append(obs.copy())
-                    ep_ag.append(ag.copy())
-                    ep_g.append(g.copy())
-                    ep_actions.append(action.copy())
-                    # re-assign the observation
-                    obs = obs_new
-                    ag = ag_new
-                    ep_obs.append(obs.copy())
-                    ep_ag.append(ag.copy())
-                    mb_obs.append(ep_obs)
-                    mb_ag.append(ep_ag)
-                    mb_g.append(ep_g)
-                    mb_actions.append(ep_actions)
-                # convert them into arrays
-                mb_obs = np.array(mb_obs)
-                mb_ag = np.array(mb_ag)
-                mb_g = np.array(mb_g)
-                mb_actions = np.array(mb_actions)
-                # store the episodes
-                self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
-                # after collect the samples, start to update the network
-                for _ in range(self.args.update_cycles):
-                    qf1_loss, qf2_loss, actor_loss, alpha, alpha_loss = self._update_newtork()
-                    # update the target network
-                    if global_timesteps % self.args.target_update_interval == 0:
-                        self._update_target_network(self.target_qf1, self.qf1)
-                        self._update_target_network(self.target_qf2, self.qf2)
-                    global_timesteps += 1
-            # print the log information
+            for _ in range(self.args.n_cycles):
+                mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
+                for _ in range(self.args.train_loop_per_epoch):
+                    ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+                    # for each epoch, it will reset the environment
+                    for t in range(self.args.epoch_length):
+                        # start to collect samples
+                        with torch.no_grad():
+                            obs_tensor = self._get_tensor_inputs(obs)
+                            pi = self.actor_net(obs_tensor)
+                            action = get_action_info(pi, cuda=self.args.cuda).select_actions(reparameterize=False)
+                            action = action.cpu().numpy()[0]
+                        # input the actions into the environment
+                        observation_new, reward, done, _ = self.env.step(self.action_max * action)
+                        obs_new = observation_new['observation']
+                        ag_new = observation_new['achieved_goal']
+                        # append rollouts
+                        ep_obs.append(obs.copy())
+                        ep_ag.append(ag.copy())
+                        ep_g.append(g.copy())
+                        ep_actions.append(action.copy())
+                        # re-assign the observation
+                        obs = obs_new
+                        ag = ag_new
+                        ep_obs.append(obs.copy())
+                        ep_ag.append(ag.copy())
+                        mb_obs.append(ep_obs)
+                        mb_ag.append(ep_ag)
+                        mb_g.append(ep_g)
+                        mb_actions.append(ep_actions)
+                    # convert them into arrays
+                    mb_obs = np.array(mb_obs)
+                    mb_ag = np.array(mb_ag)
+                    mb_g = np.array(mb_g)
+                    mb_actions = np.array(mb_actions)
+                    # store the episodes
+                    self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
+                    # after collect the samples, start to update the network
+                    for _ in range(self.args.update_cycles):
+                        qf1_loss, qf2_loss, actor_loss, alpha, alpha_loss = self._update_newtork()
+                        # update the target network
+                        if global_timesteps % self.args.target_update_interval == 0:
+                            self._update_target_network(self.target_qf1, self.qf1)
+                            self._update_target_network(self.target_qf2, self.qf2)
+                        global_timesteps += 1
+                # print the log information
             if epoch % self.args.display_interval == 0:
                 # start to do the evaluation
                 #mean_rewards = self._evaluate_agent()

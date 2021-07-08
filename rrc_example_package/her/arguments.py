@@ -47,7 +47,7 @@ def get_sac_args():
     parse.add_argument('--cuda', action='store_true', help='use GPU do the training')
     parse.add_argument('--seed', type=int, default=123, help='the random seed to reproduce results')
     parse.add_argument('--hidden-size', type=int, default=256, help='the size of the hidden layer')
-    parse.add_argument('--train-loop-per-epoch', type=int, default=1, help='the training loop per epoch')
+    parse.add_argument('--train-loop-per-epoch', type=int, default=2, help='the training loop per epoch')
     parse.add_argument('--q-lr', type=float, default=3e-4, help='the learning rate')
     parse.add_argument('--p-lr', type=float, default=3e-4, help='the learning rate of the actor')
     parse.add_argument('--n-epochs', type=int, default=int(3e3), help='the number of total epochs')
@@ -75,6 +75,8 @@ def get_sac_args():
     parse.add_argument('--replay-strategy', type=str, default='future', help='the HER strategy')
     parse.add_argument('--replay-k', type=int, default=4, help='ratio to be replace')
     parse.add_argument('--clip-range', type=float, default=5, help='the clip range')
+    parse.add_argument('--n-cycles', type=int, default=50, help='the times to collect samples per epoch')
+
 
 
     args = parse.parse_args()
