@@ -164,18 +164,18 @@ class sac_agent_rrc:
     # update the network
     def _update_newtork(self):
         # smaple batch of samples from the replay buffer
-        obses, actions, rewards, obses_, dones = self.buffer.sample(self.args.batch_size)
+        transitions = self.buffer.sample(self.args.batch_size)
 
         # Add intrinsic reward
         """r_intrinsic = self.get_intrinsic_reward(obses, actions, obses_)
         transitions['r'] += r_intrinsic
         ri = np.mean(r_intrinsic)"""
         # preprocessing the data into the tensors, will support GPU later
-        obses = torch.tensor(obses, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        actions = torch.tensor(actions, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        rewards = torch.tensor(rewards, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
-        obses_ = torch.tensor(obses_, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
-        inverse_dones = torch.tensor(1 - dones, dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
+        obses = torch.tensor(transitions['obs'], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
+        actions = torch.tensor(transitions['actions'], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
+        rewards = torch.tensor(transitions['r'], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
+        obses_ = torch.tensor(transitions['obs_next'], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu')
+        inverse_dones = torch.tensor(1 - transitions['r'], dtype=torch.float32, device='cuda' if self.args.cuda else 'cpu').unsqueeze(-1)
         # start to update the actor network
         pis = self.actor_net(obses)
         actions_info = get_action_info(pis, cuda=self.args.cuda)
