@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 from rrc_example_package.her.rl_modules.models import flatten_mlp, tanh_gaussian_actor
-from rrc_example_package.her.rl_modules.sac_replay_buffer import replay_buffer
+from rrc_example_package.her.rl_modules.replay_buffer import replay_buffer
+from rrc_example_package.her.her_modules.her import her_sampler
 from rrc_example_package.her.utils import get_action_info
 from datetime import datetime
 import copy
@@ -43,8 +44,9 @@ class sac_agent_rrc:
         self.log_alpha = torch.zeros(1, requires_grad=True, device='cuda' if self.args.cuda else 'cpu')
         # define the optimizer
         self.alpha_optim = torch.optim.Adam([self.log_alpha], lr=self.args.p_lr)
-        # define the replay buffer
-        self.buffer = replay_buffer(self.args.buffer_size)
+        self.her_module = her_sampler(self.args.replay_strategy, self.args.replay_k, self.env.compute_reward)
+        # create the replay buffer
+        self.buffer = replay_buffer(self.env_params, self.args.buffer_size, self.her_module.sample_her_transitions)
         # get the action max
         self.action_max = self.env.action_space.high[0]
         # if use cuda, put tensor onto the gpu
@@ -66,7 +68,7 @@ class sac_agent_rrc:
         torch.autograd.set_detect_anomaly(True)
         global_timesteps = 0
         # before the official training, do the initial exploration to add episodes into the replay buffer
-        self._initial_exploration(exploration_policy=self.args.init_exploration_policy) 
+        self._collect_exp() 
         # reset the environment
         obs = self.env.reset(difficulty=self.sample_difficulty())
         for epoch in range(self.args.n_epochs):
@@ -82,7 +84,7 @@ class sac_agent_rrc:
                     # input the actions into the environment
                     obs_, reward, done, _ = self.env.step(self.action_max * action)
                     # store the samples
-                    self.buffer.add(obs, action, reward, obs_, float(done))
+                    self.buffer.store_episode(obs, action, reward, obs_, float(done))
                     # reassign the observations
                     obs = obs_
                     if done:
@@ -199,7 +201,7 @@ class sac_agent_rrc:
             target_param.data.copy_(self.args.tau * param.data + (1 - self.args.tau) * target_param.data)
 
 
-    def sample_difficulty(self, d1_prob=0.2, d2_prob=0.1, d3_prob=0.7):
+    def sample_difficulty(self, d1_prob=0.5, d2_prob=0.5, d3_prob=0.0):
         difficulty = np.random.choice([1,2,3], p=[d1_prob,d2_prob,d3_prob])
         return difficulty
 
@@ -227,6 +229,50 @@ class sac_agent_rrc:
                 obs = obs_["observation"]
             total_reward += episode_reward
         return total_reward / self.args.eval_episodes
+
+    def _collect_exp(self, rollouts=100, difficulty=1):
+        mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []
+        for _ in range(rollouts):
+            # reset the rollouts
+            ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+            # reset the environment
+            observation = self.env.reset(difficulty=difficulty)
+            obs = observation['observation']
+            ag = observation['achieved_goal']
+            g = observation['desired_goal']
+            # start to collect samples
+            for t in range(self.env_params['max_timesteps']):
+                with torch.no_grad():
+                    input_tensor = self._preproc_inputs(obs, g)
+                    pi = self.actor_net(input_tensor)
+                    action = self._select_actions(pi)
+                # feed the actions into the environment
+                observation_new, _, _, info = self.env.step(action)
+                obs_new = observation_new['observation']
+                ag_new = observation_new['achieved_goal']
+                # append rollouts
+                ep_obs.append(obs.copy())
+                ep_ag.append(ag.copy())
+                ep_g.append(g.copy())
+                ep_actions.append(action.copy())
+                # re-assign the observation
+                obs = obs_new
+                ag = ag_new
+            ep_obs.append(obs.copy())
+            ep_ag.append(ag.copy())
+            mb_obs.append(ep_obs)
+            mb_ag.append(ep_ag)
+            mb_g.append(ep_g)
+            mb_actions.append(ep_actions)
+        # convert them into arrays
+        mb_obs = np.array(mb_obs)
+        mb_ag = np.array(mb_ag)
+        mb_g = np.array(mb_g)
+        mb_actions = np.array(mb_actions)
+        # store the episodes
+        self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
+        #self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
+        
 
     """def get_intrinsic_reward(self, obs, a, obs_next, clip_max=0.8, scale=1):
         delta = obs_next - obs
